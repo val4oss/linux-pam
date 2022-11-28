@@ -29,6 +29,8 @@
 static unsigned long u_mask = 0022;
 static unsigned long home_mode = 0;
 static char skeldir[BUFSIZ] = "/etc/skel";
+static const char dir_mode_option[] = "copymode";
+static int dir_mode = 0;
 
 /* Do the actual work of creating a home dir */
 static int
@@ -322,8 +324,14 @@ create_homedir(const struct passwd *pwd,
    retval = PAM_SUCCESS;
 
  go_out:
+   mode_t mode = 0777;
+   if (dir_mode) {
+      struct stat st;
+      if (lstat(source, &st) == 0)
+         mode = st.st_mode;
+   }
 
-   if (chmod(dest, 0777 & (~u_mask)) != 0 ||
+   if (chmod(dest, mode & (~u_mask)) != 0 ||
        chown(dest, pwd->pw_uid, pwd->pw_gid) != 0)
    {
       pam_syslog(NULL, LOG_DEBUG,
@@ -388,7 +396,7 @@ main(int argc, char *argv[])
    char *eptr;
 
    if (argc < 2) {
-	fprintf(stderr, "Usage: %s <username> [<umask> [<skeldir> [<home_mode>]]]\n", argv[0]);
+	fprintf(stderr, "Usage: %s <username> [<umask> [<skeldir> [<home_mode> [<dir_mode>]]]]\n", argv[0]);
 	return PAM_SESSION_ERR;
    }
 
@@ -422,6 +430,14 @@ main(int argc, char *argv[])
 		pam_syslog(NULL, LOG_ERR, "Bogus home_mode value %s", argv[4]);
 		return PAM_SESSION_ERR;
        }
+   }
+
+   if (argc >= 6) {
+      if (strncmp(argv[5], dir_mode_option, sizeof(dir_mode_option))) {
+         pam_syslog(NULL, LOG_ERR, "Unknown directory mode %s.", argv[5]);
+         return PAM_SESSION_ERR;
+      }
+      dir_mode = 1;
    }
 
    if (home_mode == 0)
