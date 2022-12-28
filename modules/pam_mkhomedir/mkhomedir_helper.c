@@ -41,6 +41,7 @@ create_homedir(const struct passwd *pwd,
    DIR *d;
    struct dirent *dent;
    int retval = PAM_SESSION_ERR;
+   mode_t mode = umask(0777);
 
    /* Create the new directory */
    if (mkdir(dest, 0700) && errno != EEXIST)
@@ -324,7 +325,6 @@ create_homedir(const struct passwd *pwd,
    retval = PAM_SUCCESS;
 
  go_out:
-   mode_t mode = 0777;
    if (dir_mode) {
       struct stat st;
       if (lstat(source, &st) == 0)
