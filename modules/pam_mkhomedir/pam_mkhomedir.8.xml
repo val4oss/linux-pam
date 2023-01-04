@@ -113,6 +113,20 @@
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term>
+          copymode
+        </term>
+        <listitem>
+          <para>
+          Keep the same access permission as <replaceable>skel</replaceable>'s
+          subfolders, otherwise it will keep the default value 0777. All
+          directories access permissions are computed from the value of
+          <replaceable>umask</replaceable>.
+          </para>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
