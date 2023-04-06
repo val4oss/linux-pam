@@ -372,7 +372,9 @@ pam_sm_open_session (pam_handle_t *pamh, int flags UNUSED,
 	struct passwd *tpwd, *rpwd;
 	int fd, i, debug = 0;
 	int retval = PAM_SUCCESS;
-	uid_t systemuser = 499, targetuser = 0;
+	uid_t systemuser = 499, targetuser = 0, uid;
+	gid_t gid;
+	struct stat st;
 
 	/* Parse arguments.  We don't understand many, so no sense in breaking
 	 * this into a separate function. */
@@ -539,18 +541,27 @@ pam_sm_open_session (pam_handle_t *pamh, int flags UNUSED,
 			   cookiefile);
 	}
 
+	/* Get owner and group of the cookiefile to use it*/
+	if (stat(cookiefile, &st) == 0) {
+		uid = st.st_uid;
+		gid = st.st_gid;
+	} else {
+		uid = getuid();
+		gid = getgid();
+	}
+
 	/* Read the user's .Xauthority file.  Because the current UID is
 	 * the original user's UID, this will only fail if something has
 	 * gone wrong, or we have no cookies. */
 	if (debug) {
 		pam_syslog(pamh, LOG_DEBUG,
-			   "running \"%s %s %s %s %s\" as %lu/%lu",
-			   xauth, "-f", cookiefile, "nlist", display,
-			   (unsigned long) getuid(), (unsigned long) getgid());
+			   "running \"%s %s %s %s %s %s\" as %lu/%lu",
+			   xauth, "-i", "-f", cookiefile, "nlist", display,
+			   (unsigned long) uid, (unsigned long) gid);
 	}
 	if (run_coprocess(pamh, NULL, &cookie,
-			  getuid(), getgid(),
-			  xauth, "-f", cookiefile, "nlist", display,
+			  uid, gid,
+			  xauth, "-i", "-f", cookiefile, "nlist", display,
 			  NULL) == 0) {
 #ifdef WITH_SELINUX
 		char *context_raw = NULL;
@@ -603,12 +614,12 @@ pam_sm_open_session (pam_handle_t *pamh, int flags UNUSED,
 						       cookiefile,
 						       "nlist",
 						       t,
-						       (unsigned long) getuid(),
-						       (unsigned long) getgid());
+						       (unsigned long) uid,
+						       (unsigned long) gid);
 					}
 					run_coprocess(pamh, NULL, &cookie,
-						      getuid(), getgid(),
-						      xauth, "-f", cookiefile,
+						      uid, gid,
+						      xauth, "-i", "-f", cookiefile,
 						      "nlist", t, NULL);
 				}
 				free(t);
