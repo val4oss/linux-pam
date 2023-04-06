@@ -368,7 +368,7 @@ pam_sm_open_session (pam_handle_t *pamh, int flags UNUSED,
 	char *cookiefile = NULL, *xauthority = NULL,
 	     *cookie = NULL, *display = NULL, *tmp = NULL,
 	     *xauthlocalhostname = NULL;
-	const char *user, *xauth = NULL;
+	const char *user, *xauth = NULL, *login_name;
 	struct passwd *tpwd, *rpwd;
 	int fd, i, debug = 0;
 	int retval = PAM_SUCCESS;
@@ -442,7 +442,15 @@ pam_sm_open_session (pam_handle_t *pamh, int flags UNUSED,
 		retval = PAM_SESSION_ERR;
 		goto cleanup;
 	}
-	rpwd = pam_modutil_getpwuid(pamh, getuid());
+
+	/* Get the Login user to avoid running command as root by getuid() */
+	login_name = pam_modutil_getlogin(pamh);
+	if (login_name) {
+		rpwd = pam_modutil_getpwnam(pamh, login_name);
+	} else {
+		rpwd = pam_modutil_getpwuid(pamh, getuid());
+	}
+
 	if (rpwd == NULL) {
 		pam_syslog(pamh, LOG_ERR,
 			   "error determining invoking user's name");
